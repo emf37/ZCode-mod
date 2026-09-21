@@ -2,7 +2,24 @@ import { posix } from "node:path";
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_DIR_NAME = "packages";
 
-export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = ["browser-use-plugin"] as const;
+export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = [
+  "browser-use-plugin",
+  // 随包分发的预构建内容型插件。与 prepare-prebuilds.mjs 的远端 staging 清单、
+  // packages/desktop/scripts/prepare-agent-node-bundle.mjs 的桌面 seed 清单保持一致：
+  // 远端 staging 会把这些目录一起上传，本清单据此断言它们确实到位。
+  // 注意 docx/pdf/pptx/xlsx 技能的 LICENSE.txt 为 Z.ai 专有非商用许可。
+  "android-emulator-plugin",
+  "ios-simulator-plugin",
+  "documents-plugin",
+  "pdf-plugin",
+  "presentations-plugin",
+  "spreadsheets-plugin",
+  "image-search-plugin",
+  "plugin-creator-plugin",
+  "skill-creator-plugin",
+  "restore-legacy-sessions-plugin",
+  "zcode-cua-plugin",
+] as const;
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_INCLUDED_TOP_LEVEL_PATHS = [
   ".mcp.json",
@@ -46,6 +63,24 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
   "browser-use-plugin/skills/control-browser/SKILL.md",
   "browser-use-plugin/skills/web-gui-tester/SKILL.md",
   // 仅校验 manifest 无法发现文档插件缺少技能正文或视觉评审 Agent。
+  //
+  // 同理，随包分发的预构建插件也要钉住主技能正文：只校验 manifest 会放过
+  // "有插件壳、无技能正文" 的残缺目录，症状是远端 /skill 列表静默少项。
+  "android-emulator-plugin/skills/android-dev/SKILL.md",
+  "ios-simulator-plugin/skills/ios-dev/SKILL.md",
+  "documents-plugin/skills/docx/SKILL.md",
+  "pdf-plugin/skills/pdf/SKILL.md",
+  "presentations-plugin/skills/pptx/SKILL.md",
+  "spreadsheets-plugin/skills/xlsx/SKILL.md",
+  "plugin-creator-plugin/skills/plugin-creator/SKILL.md",
+  "skill-creator-plugin/skills/skill-creator/SKILL.md",
+  "restore-legacy-sessions-plugin/skills/restore-legacy-sessions/SKILL.md",
+  "zcode-cua-plugin/skills/computer-use/SKILL.md",
+  // 文档技能还带一个视觉评审子代理，缺失时技能可用但产出无法评审。
+  "documents-plugin/agents/visual-judge.md",
+  "pdf-plugin/agents/visual-judge.md",
+  "presentations-plugin/agents/visual-judge.md",
+  "spreadsheets-plugin/agents/visual-judge.md",
 ] as const;
 
 export function buildRemoteAgentOfficialPluginDir(remoteProviderDir: string): string {

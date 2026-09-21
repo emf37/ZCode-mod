@@ -7,6 +7,12 @@ coverage/
 .turbo
 .tmp/
 
+# 例外：这两个插件的 dist/ 是随发行包分发的预构建产物，不是本仓库的构建输出。
+# 它们的 TypeScript 源码未随本仓库开源，删掉 dist 就无法重建，因此必须入库。
+# （其余 dist/ 仍是构建产物，保持忽略。）
+!packages/android-emulator-plugin/dist/
+!packages/ios-simulator-plugin/dist/
+
 # Compiled TypeScript output in src directories
 src/**/*.js
 src/**/*.d.ts
