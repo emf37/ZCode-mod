@@ -1,8 +1,13 @@
-# 保持脚本文件 LF 换行，避免 Windows CRLF 导致 shebang 解析失败
-*.mjs text eol=lf
-*.sh  text eol=lf
+# 换行符策略：默认固定 LF。
+#
+# 迁移 checksum 直接哈希源码文本（schema 模板字符串与 SQL 语句），Windows 检出若把
+# .ts 转成 CRLF，构建产物算出的校验值就会与数据库账本不一致，触发不可重试的
+# checksum mismatch，已有数据无法打开。脚本 shebang 同样要求 LF。
+# 因此除下方显式豁免外，一律固定 LF；无扩展名的文本（LICENSE、Dockerfile）也覆盖在内。
+* text=auto eol=lf
 
-# 上游许可原文与生成的声明按字节保存，不能自动转换换行或裁剪空白。
+# 例外：上游许可原文与生成的声明按字节保存，不能自动转换换行或裁剪空白。
+# 必须在上面那条之后（gitattributes 规则后者优先），否则会被 eol=lf 覆盖。
 # 原文中的 License / ======= 是 Markdown 标题，不是合并冲突。
 THIRD-PARTY-NOTICES.md -text -whitespace conflict-marker-size=32 linguist-generated=true
 third-party/upstream/** -text -whitespace
