@@ -14,10 +14,10 @@
 # 环境变量（与 install.sh 同名，含义一致）：
 #   ZCODE_DIST_HOME     安装目录，默认 ~/.zcode/runtime
 #   ZCODE_DIST_BIN_DIR  命令目录，默认 ~/.local/bin
-#   ZCODE_RELEASE_REPO  资产来源仓库，默认 emf37/ZCode
+#   ZCODE_RELEASE_REPO  资产来源仓库，默认 emf37/ZCode-mod
 set -eu
 
-REPO="${ZCODE_RELEASE_REPO:-emf37/ZCode}"
+REPO="${ZCODE_RELEASE_REPO:-emf37/ZCode-mod}"
 TAG="${1:-latest}"
 
 if [ "$TAG" = "latest" ]; then
