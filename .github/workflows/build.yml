@@ -1,10 +1,14 @@
 name: build
 
-# 产出 ZCode 命令行版发行包（TUI + Web + 后端 + Agent）与桌面 Agent 载荷。
-# 只做构建与校验，不做发布；要发布可在下方 upload-artifact 后接自己的步骤。
+# 构建 ZCode 命令行版发行包（TUI + Web + 后端 + Agent）与桌面 Agent 载荷。
+#
+#   推送到 main / align-plugins  → 构建并上传 artifact
+#   推 v* tag                    → 构建并发布 GitHub Release
+#   手动 dispatch                → 构建；填了 release_tag 则同时发布 Release
 on:
   push:
     branches: [main, align-plugins]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -13,10 +17,14 @@ on:
         description: 写进 install.sh 与 latest.json 的下载根地址
         required: false
         type: string
+      release_tag:
+        description: 非空则用该 tag 发布 Release（例如 v3.14.3）
+        required: false
+        type: string
 
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -27,6 +35,9 @@ env:
   PNPM_VERSION: "10.33.2"
   # build:zcode 必须拿到下载根地址才能生成 install.sh / latest.json。
   # 优先用 dispatch 入参，其次用仓库变量（Settings → Secrets and variables → Actions → Variables）。
+  # 注意：GitHub Release 的资产是平铺的，这个地址应指向具备
+  #「latest.json + releases/<版本>/<包>」布局的静态托管；只想下载安装包的话用
+  # Release 里附带的 install-from-release.sh。
   ZCODE_DIST_BASE_URL: ${{ inputs.base_url || vars.ZCODE_DIST_BASE_URL || 'https://downloads.example.com/zcode/' }}
 
 jobs:
@@ -106,3 +117,99 @@ jobs:
           name: zcode-desktop-agent-payload
           path: packages/desktop/bundled-agents/*/glm/
           if-no-files-found: error
+
+  release:
+    name: 发布 Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 取回构建产物
+        uses: actions/download-artifact@v8
+        with:
+          name: zcode-dist
+          path: dist
+
+      - name: 取回桌面 Agent 载荷
+        uses: actions/download-artifact@v8
+        with:
+          name: zcode-desktop-agent-payload
+          path: payload
+
+      - name: 组装发布资产
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./dist/latest.json').version")"
+          # 桌面载荷在 artifact 里是目录，打成 tar.gz 才好挂到 Release。
+          tar -czf "zcode-${VERSION}-desktop-agent-linux-x64.tar.gz" -C payload .
+          mkdir -p assets
+          cp "dist/releases/${VERSION}/zcode-${VERSION}.tar.gz" assets/
+          cp "dist/releases/${VERSION}/sha256.txt" assets/
+          cp dist/latest.json dist/install.sh scripts/ci/install-from-release.sh assets/
+          mv "zcode-${VERSION}-desktop-agent-linux-x64.tar.gz" assets/
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          ls -la assets/
+
+      - name: 写 Release 说明
+        run: |
+          set -euo pipefail
+          {
+            echo "ZCode $RELEASE_TAG（上游 3.14.3 + 插件还原 + LF 修复）"
+            echo
+            echo "### 校验"
+            echo '```'
+            cat "assets/sha256.txt"
+            echo '```'
+            echo
+            echo "### 资产"
+            echo "| 文件 | 用途 |"
+            echo "| --- | --- |"
+            echo "| \`zcode-${VERSION}.tar.gz\` | 命令行版运行包（TUI + Web + 后端 + Agent） |"
+            echo "| \`sha256.txt\` | 上面的运行包摘要 |"
+            echo "| \`install-from-release.sh\` | 直接从这个 Release 安装，见下 |"
+            echo "| \`install.sh\` + \`latest.json\` | 需要「latest.json + releases/<版本>/<包>」静态布局时才用得上 |"
+            echo "| \`zcode-${VERSION}-desktop-agent-linux-x64.tar.gz\` | 桌面形态 Agent 载荷（zcode.cjs + 官方插件 + bundled-skills） |"
+            echo
+            echo "### 安装"
+            echo '```sh'
+            echo "curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/install-from-release.sh | sh"
+            echo '```'
+            echo "默认装到 \`~/.zcode/runtime\`，命令落在 \`~/.local/bin/zcode\`。可用 \`ZCODE_DIST_HOME\` / \`ZCODE_DIST_BIN_DIR\` 改。"
+            echo
+            echo "> 国内网络访问 GitHub 可能不通，需要代理时先设 \`https_proxy\`。"
+            echo
+            echo "### 打进的插件与技能包"
+            echo '```'
+            ls payload/*/glm/packages/ 2>/dev/null
+            echo '```'
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: 创建或更新 Release
+        run: |
+          set -euo pipefail
+          ASSETS=(assets/*)
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG 已存在，覆盖资产。"
+            gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${ASSETS[@]}"
+          else
+            # --target 固定到本次构建的提交：手动 dispatch 时 tag 还不存在，
+            # 不指定的话会拿默认分支的 HEAD，指到别的提交上。
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "ZCode $RELEASE_TAG" \
+              --notes-file release-notes.md \
+              "${ASSETS[@]}"
+          fi
+          echo "Release 地址：$(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json url --jq .url)"
