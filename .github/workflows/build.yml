@@ -1,0 +1,108 @@
+name: build
+
+# 产出 ZCode 命令行版发行包（TUI + Web + 后端 + Agent）与桌面 Agent 载荷。
+# 只做构建与校验，不做发布；要发布可在下方 upload-artifact 后接自己的步骤。
+on:
+  push:
+    branches: [main, align-plugins]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 写进 install.sh 与 latest.json 的下载根地址
+        required: false
+        type: string
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # 与 mise.toml 保持一致：engines.node 要求 >= 24，pnpm 由 lockfile 决定。
+  NODE_VERSION: "24.14.0"
+  PNPM_VERSION: "10.33.2"
+  # build:zcode 必须拿到下载根地址才能生成 install.sh / latest.json。
+  # 优先用 dispatch 入参，其次用仓库变量（Settings → Secrets and variables → Actions → Variables）。
+  ZCODE_DIST_BASE_URL: ${{ inputs.base_url || vars.ZCODE_DIST_BASE_URL || 'https://downloads.example.com/zcode/' }}
+
+jobs:
+  build:
+    name: 构建发行包
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # 迁移 checksum 直接哈希源码文本，CRLF 检出会让产物算出的值与已有数据库账本
+      # 不一致，启动时报不可重试的 checksum mismatch。.gitattributes 已固定 LF，
+      # 这一步断言检出结果并比对账本值，防止规则或迁移文本被改回去。
+      - name: 迁移基线断言
+        run: node scripts/ci/assert-migration-baseline.mjs
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 类型检查
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: 构建命令行版发行包
+        run: pnpm build:zcode --base-url "$ZCODE_DIST_BASE_URL"
+
+      # 桌面形态的 Agent 载荷：zcode.cjs 与其旁边的 packages/（官方插件 + bundled-skills）。
+      # 打包 Electron 应用需要 electron-builder 与签名材料，这里只 stage 载荷。
+      - name: Stage 桌面 Agent 载荷
+        run: pnpm --filter @zcode/desktop run prepare:agent-bundle
+
+      - name: 汇总产物信息
+        run: |
+          {
+            echo "## 构建产物"
+            echo
+            for f in dist/zcode/releases/*/sha256.txt; do
+              [ -f "$f" ] && echo '```' && cat "$f" && echo '```'
+            done
+            echo
+            echo "### 打进的插件与技能包"
+            echo '```'
+            ls packages/desktop/bundled-agents/*/glm/packages/ 2>/dev/null
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传发行包
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-dist
+          path: |
+            dist/zcode/releases/
+            dist/zcode/latest.json
+            dist/zcode/install.sh
+          if-no-files-found: error
+
+      - name: 上传桌面 Agent 载荷
+        uses: actions/upload-artifact@v4
+        with:
+          name: zcode-desktop-agent-payload
+          path: packages/desktop/bundled-agents/*/glm/
+          if-no-files-found: error
