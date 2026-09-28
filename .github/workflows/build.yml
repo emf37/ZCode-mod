@@ -36,18 +36,18 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: ${{ env.PNPM_VERSION }}
           run_install: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -91,7 +91,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 上传发行包
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zcode-dist
           path: |
@@ -101,7 +101,7 @@ jobs:
           if-no-files-found: error
 
       - name: 上传桌面 Agent 载荷
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zcode-desktop-agent-payload
           path: packages/desktop/bundled-agents/*/glm/
