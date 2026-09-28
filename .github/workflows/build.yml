@@ -135,6 +135,12 @@ jobs:
 
       - name: 构建 Windows 桌面安装包
         env:
+          # 产品身份与后端环境由 ZCODE_ENV 决定（见 desktop-product-identity.mjs）：
+          # 非 production 时 appId 变成 dev.zcode.app.preview、productName 变成
+          # 「ZCode Preview」、产物名带 _TEST 后缀，得到一个可与正式版并排安装的预览包，
+          # 不能接管正式安装与数据。要出正式 ZCode 包必须显式给 production。
+          ZCODE_ENV: production
+          ZCODE_COMMIT: ${{ github.sha }}
           # 桌面安装包不依赖 mock-cdn remote 资产；跳过它可省掉跨平台资源的下载与打包，
           # 这是仓库为此场景预留的开关（见 prepare-runtime-assets.mjs）。
           ZCODE_SKIP_REMOTE_ASSETS: "1"
