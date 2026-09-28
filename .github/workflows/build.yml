@@ -1,6 +1,8 @@
 name: build
 
-# 构建 ZCode 命令行版发行包（TUI + Web + 后端 + Agent）与桌面 Agent 载荷。
+# 构建两套产物：
+#   - 命令行版发行包（TUI + Web + 后端 + Agent），Linux runner
+#   - Windows 桌面版安装包（NSIS .exe），Windows runner
 #
 #   推送到 main / align-plugins  → 构建并上传 artifact
 #   推 v* tag                    → 构建并发布 GitHub Release
@@ -39,10 +41,13 @@ env:
   #「latest.json + releases/<版本>/<包>」布局的静态托管；只想下载安装包的话用
   # Release 里附带的 install-from-release.sh。
   ZCODE_DIST_BASE_URL: ${{ inputs.base_url || vars.ZCODE_DIST_BASE_URL || 'https://downloads.example.com/zcode/' }}
+  # 迁移 checksum 直接哈希源码文本，CRLF 会让产物算出的值与已有数据库账本不一致。
+  # .gitattributes 已固定 LF（eol 规则优先于 core.autocrlf），两个 runner 都应是 LF。
+  GUARD: node scripts/ci/assert-migration-baseline.mjs
 
 jobs:
   build:
-    name: 构建发行包
+    name: 命令行版发行包
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -63,11 +68,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
-      # 迁移 checksum 直接哈希源码文本，CRLF 检出会让产物算出的值与已有数据库账本
-      # 不一致，启动时报不可重试的 checksum mismatch。.gitattributes 已固定 LF，
-      # 这一步断言检出结果并比对账本值，防止规则或迁移文本被改回去。
       - name: 迁移基线断言
-        run: node scripts/ci/assert-migration-baseline.mjs
+        run: ${{ env.GUARD }}
 
       - name: 安装依赖
         run: pnpm install --frozen-lockfile
@@ -81,24 +83,14 @@ jobs:
       - name: 构建命令行版发行包
         run: pnpm build:zcode --base-url "$ZCODE_DIST_BASE_URL"
 
-      # 桌面形态的 Agent 载荷：zcode.cjs 与其旁边的 packages/（官方插件 + bundled-skills）。
-      # 打包 Electron 应用需要 electron-builder 与签名材料，这里只 stage 载荷。
-      - name: Stage 桌面 Agent 载荷
-        run: pnpm --filter @zcode/desktop run prepare:agent-bundle
-
       - name: 汇总产物信息
         run: |
           {
-            echo "## 构建产物"
+            echo "## 命令行版发行包"
             echo
             for f in dist/zcode/releases/*/sha256.txt; do
               [ -f "$f" ] && echo '```' && cat "$f" && echo '```'
             done
-            echo
-            echo "### 打进的插件与技能包"
-            echo '```'
-            ls packages/desktop/bundled-agents/*/glm/packages/ 2>/dev/null
-            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 上传发行包
@@ -111,19 +103,87 @@ jobs:
             dist/zcode/install.sh
           if-no-files-found: error
 
+  desktop-windows:
+    name: Windows 桌面安装包
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # Windows runner 默认 core.autocrlf=true，但 .gitattributes 的 eol=lf 优先，
+      # 检出仍应是 LF —— 这一步正好把这个前提钉住，顺带验证修复在 Windows 上成立。
+      - name: 迁移基线断言
+        run: ${{ env.GUARD }}
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: 构建 Windows 桌面安装包
+        env:
+          # 桌面安装包不依赖 mock-cdn remote 资产；跳过它可省掉跨平台资源的下载与打包，
+          # 这是仓库为此场景预留的开关（见 prepare-runtime-assets.mjs）。
+          ZCODE_SKIP_REMOTE_ASSETS: "1"
+          # electron-builder 在 CI 里发现 git tag 会自动 publish（配置里的 generic provider
+          # 只是占位，指向 http://localhost:8081）。bundle.mjs 不转发 --publish 参数，
+          # 所以用 electron-publish 读的 GITHUB_REF_TYPE 让它判定为「非 tag 构建」，
+          # 从而走"不发布"分支。发布由下面的 release job 用 gh 完成。
+          GITHUB_REF_TYPE: branch
+        run: pnpm bundle:desktop -- --os win --arch x64
+
+      - name: 汇总产物信息
+        shell: bash
+        run: |
+          {
+            echo "## Windows 桌面安装包"
+            echo
+            echo '```'
+            ls -lh packages/desktop/dist/*.exe 2>/dev/null || echo "(未找到 .exe)"
+            echo '```'
+            echo
+            echo "### 打进安装包的插件与技能包"
+            echo '```'
+            ls packages/desktop/bundled-agents/win32-x64/glm/packages/ 2>/dev/null || echo "(未找到 win32-x64 载荷)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: 上传 Windows 安装包
+        uses: actions/upload-artifact@v7
+        with:
+          name: zcode-desktop-windows
+          path: |
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/*.blockmap
+            packages/desktop/dist/latest.yml
+          if-no-files-found: error
+
       - name: 上传桌面 Agent 载荷
         uses: actions/upload-artifact@v7
         with:
-          name: zcode-desktop-agent-payload
-          path: packages/desktop/bundled-agents/*/glm/
+          name: zcode-desktop-agent-payload-win32-x64
+          path: packages/desktop/bundled-agents/win32-x64/glm/
           if-no-files-found: error
 
   release:
     name: 发布 Release
-    needs: build
+    needs: [build, desktop-windows]
     if: startsWith(github.ref, 'refs/tags/v') || inputs.release_tag != ''
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: write
     env:
@@ -135,29 +195,34 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: 取回构建产物
+      - name: 取回命令行版产物
         uses: actions/download-artifact@v8
         with:
           name: zcode-dist
           path: dist
 
+      - name: 取回 Windows 安装包
+        uses: actions/download-artifact@v8
+        with:
+          name: zcode-desktop-windows
+          path: desktop-win
+
       - name: 取回桌面 Agent 载荷
         uses: actions/download-artifact@v8
         with:
-          name: zcode-desktop-agent-payload
+          name: zcode-desktop-agent-payload-win32-x64
           path: payload
 
       - name: 组装发布资产
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./dist/latest.json').version")"
-          # 桌面载荷在 artifact 里是目录，打成 tar.gz 才好挂到 Release。
-          tar -czf "zcode-${VERSION}-desktop-agent-linux-x64.tar.gz" -C payload .
           mkdir -p assets
           cp "dist/releases/${VERSION}/zcode-${VERSION}.tar.gz" assets/
           cp "dist/releases/${VERSION}/sha256.txt" assets/
           cp dist/latest.json dist/install.sh scripts/ci/install-from-release.sh assets/
-          mv "zcode-${VERSION}-desktop-agent-linux-x64.tar.gz" assets/
+          for f in desktop-win/*; do [ -f "$f" ] && cp "$f" assets/; done
+          tar -czf "assets/zcode-${VERSION}-desktop-agent-win32-x64.tar.gz" -C payload .
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           ls -la assets/
 
@@ -175,23 +240,30 @@ jobs:
             echo "### 资产"
             echo "| 文件 | 用途 |"
             echo "| --- | --- |"
+            echo "| \`.exe\` | **Windows 桌面版安装包**（NSIS，未签名） |"
             echo "| \`zcode-${VERSION}.tar.gz\` | 命令行版运行包（TUI + Web + 后端 + Agent） |"
-            echo "| \`sha256.txt\` | 上面的运行包摘要 |"
-            echo "| \`install-from-release.sh\` | 直接从这个 Release 安装，见下 |"
+            echo "| \`install-from-release.sh\` | 命令行版：直接从这个 Release 安装 |"
             echo "| \`install.sh\` + \`latest.json\` | 需要「latest.json + releases/<版本>/<包>」静态布局时才用得上 |"
-            echo "| \`zcode-${VERSION}-desktop-agent-linux-x64.tar.gz\` | 桌面形态 Agent 载荷（zcode.cjs + 官方插件 + bundled-skills） |"
+            echo "| \`zcode-${VERSION}-desktop-agent-win32-x64.tar.gz\` | 桌面 Agent 载荷（已含在安装包内，单独给出便于替换） |"
             echo
-            echo "### 安装"
+            echo "实际资产："
+            echo '```'
+            ls -lh assets/
+            echo
+            echo "### 安装（Windows 桌面版）"
+            echo "下载 \`.exe\` 直接双击。**本地构建未签名**，SmartScreen 会拦截：点「更多信息」→「仍要运行」，"
+            echo "或先执行 \`Unblock-File <安装包路径>\`。"
+            echo
+            echo "### 安装（命令行版）"
             echo '```sh'
             echo "curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/${RELEASE_TAG}/install-from-release.sh | sh"
             echo '```'
-            echo "默认装到 \`~/.zcode/runtime\`，命令落在 \`~/.local/bin/zcode\`。可用 \`ZCODE_DIST_HOME\` / \`ZCODE_DIST_BIN_DIR\` 改。"
             echo
-            echo "> 国内网络访问 GitHub 可能不通，需要代理时先设 \`https_proxy\`。"
+            echo "> 国内网络访问 GitHub 可能不通，需要代理时先设 \`https_proxy\` / \`http_proxy\`。"
             echo
-            echo "### 打进的插件与技能包"
+            echo "### 打进安装包的插件与技能包"
             echo '```'
-            ls payload/*/glm/packages/ 2>/dev/null
+            ls payload/ 2>/dev/null && ls payload/packages/ 2>/dev/null
             echo '```'
           } > release-notes.md
           cat release-notes.md
