@@ -279,8 +279,11 @@ jobs:
           set -euo pipefail
           ASSETS=(assets/*)
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG 已存在，覆盖资产。"
+            echo "Release $RELEASE_TAG 已存在，覆盖资产并刷新说明。"
             gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber "${ASSETS[@]}"
+            # 只 upload 不 edit 会留下上一轮的说明：资产换了、说明还写着旧内容。
+            # 注意 upload 不会删除多余资产，改过资产集合后要手工清一次旧资产。
+            gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file release-notes.md
           else
             # --target 固定到本次构建的提交：手动 dispatch 时 tag 还不存在，
             # 不指定的话会拿默认分支的 HEAD，指到别的提交上。
