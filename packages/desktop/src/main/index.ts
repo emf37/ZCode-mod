@@ -2267,7 +2267,7 @@ app.whenReady().then(async () => {
         })
       : { blocked: false };
   if (ZCODE_PRODUCT_FLAVOR !== "production") {
-    logger.info("[force-update] Preview 跳过远端强制升级检查");
+    logger.info(`[force-update] ${ZCODE_PRODUCT_FLAVOR} 跳过远端强制升级检查`);
   } else if (skipForceUpdateForLocalDevRuntime) {
     logger.info("[force-update] 本地 dev 构建（未打包）跳过远端强制升级检查");
   }
