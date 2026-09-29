@@ -140,6 +140,10 @@ jobs:
           # 「ZCode Preview」、产物名带 _TEST 后缀，得到一个可与正式版并排安装的预览包，
           # 不能接管正式安装与数据。要出正式 ZCode 包必须显式给 production。
           ZCODE_ENV: production
+          # 用身份独立的 mod 档，而不是正式身份：app id / 安装目录 / Electron 数据目录 /
+          # AppUserModelId / Explorer 右键菜单键都与正式版分开，两个安装可以并存。
+          # 业务数据根 ~/.zcode 仍与正式版共享，以便接管已有会话。
+          ZCODE_MOD_IDENTITY: "1"
           ZCODE_COMMIT: ${{ github.sha }}
           # 桌面安装包不依赖 mock-cdn remote 资产；跳过它可省掉跨平台资源的下载与打包，
           # 这是仓库为此场景预留的开关（见 prepare-runtime-assets.mjs）。
@@ -257,8 +261,26 @@ jobs:
             ls -lh assets/
             echo
             echo "### 安装（Windows 桌面版）"
+            echo
             echo "下载 \`.exe\` 直接双击。**本地构建未签名**，SmartScreen 会拦截：点「更多信息」→「仍要运行」，"
             echo "或先执行 \`Unblock-File <安装包路径>\`。"
+            echo
+            echo "这是 **\`ZCode Mod\`** 身份，与官方 \`ZCode\` 安装包**互不覆盖**：app id、默认安装目录、"
+            echo "Electron 数据目录、AppUserModelId、资源管理器右键菜单键全部独立，两者可并存。"
+            echo
+            echo "| | 官方 ZCode | ZCode Mod |"
+            echo "| --- | --- | --- |"
+            echo "| appId | \`dev.zcode.app\` | \`dev.zcode.app.mod\` |"
+            echo "| 应用名 / 数据目录 | \`ZCode\` | \`ZCode Mod\` |"
+            echo "| 业务数据 | \`~/.zcode\` | **同一个** \`~/.zcode\` |"
+            echo "| 自动更新 | 开 | **关**（不会被官方稳定版覆盖） |"
+            echo
+            echo "> 业务数据是共享的，所以 Mod 版能直接看到你已有的会话。代价是**不要同时运行两个版本** ——"
+            echo "两边都会写同一份 \`setting.json\` 和 SQLite，并发写是设置损坏的典型成因。"
+            echo "> 想彻底隔离数据，给 Mod 版设 \`ZCODE_DATA_BASE_DIR\` 环境变量即可。"
+            echo
+            echo "> 唯一的共享点是 \`zcode://\` 协议处理器：OAuth 回调由官网中转页固定透传到该 scheme，"
+            echo "改了登录就断，所以两个身份仍会争它 —— 最后安装的那个成为默认。"
             echo
             echo "### 安装（命令行版）"
             echo '```sh'
