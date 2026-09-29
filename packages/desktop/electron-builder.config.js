@@ -458,6 +458,11 @@ export default {
   // CI 环境下若这些字段缺失会在产物阶段直接失败。这里统一在构建配置补齐，避免依赖外部注入。
   extraMetadata: {
     version: buildMetadata.appVersion,
+    // 打进 app.asar 的 package.json 也要带身份：源 packages/desktop/package.json 里的
+    // productName 是写死的 "ZCode"，extraMetadata 不覆盖它时，Preview 与 mod 的包内元数据
+    // 都写着正式版名字。运行时的身份由 app.setName(runtimeApplicationName) 显式设置，
+    // 所以这只是元数据一致性，不影响行为。
+    productName: desktopProductIdentity.productName,
     zcodeProductFlavor: desktopProductIdentity.flavor,
     homepage: "https://zcode.z.ai",
     author: {
