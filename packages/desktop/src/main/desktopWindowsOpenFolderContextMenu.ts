@@ -1,14 +1,17 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import type { Locale } from "@zcode/shared";
+import { ZCODE_PRODUCT_FLAVOR, type Locale } from "@zcode/shared";
 
-const MENU_KEY_NAME = "ZCode.OpenInZCode";
+// 注册表键名按身份区分：三个身份共用一个 key 时，后启用右键菜单的那个会覆盖前者，
+// 卸载其中一个还会连带删掉另一个的入口（键是 HKCU\Software\Classes\<Directory|Drive>\shell\<key>）。
+const MENU_KEY_NAME =
+  ZCODE_PRODUCT_FLAVOR === "mod" ? "ZCodeMod.OpenInZCodeMod" : "ZCode.OpenInZCode";
 const DIRECTORY_MENU_KEY = `HKCU\\Software\\Classes\\Directory\\shell\\${MENU_KEY_NAME}`;
 const DRIVE_MENU_KEY = `HKCU\\Software\\Classes\\Drive\\shell\\${MENU_KEY_NAME}`;
-const MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": "在ZCode中打开",
-  "en-US": "Open in ZCode",
-};
+const MENU_LABELS: Record<Locale, string> =
+  ZCODE_PRODUCT_FLAVOR === "mod"
+    ? { "zh-CN": "在ZCode Mod中打开", "en-US": "Open in ZCode Mod" }
+    : { "zh-CN": "在ZCode中打开", "en-US": "Open in ZCode" };
 
 type Logger = {
   info: (...args: unknown[]) => void;
