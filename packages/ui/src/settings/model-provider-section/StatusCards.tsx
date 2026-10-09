@@ -1,14 +1,6 @@
-import { CodingPlanEntryButton } from "@/settings/CodingPlanEntryButton.js";
+
 /* eslint-disable max-lines -- Coding Plan/Start Plan 状态卡集中编排状态、动作和套餐区块，当前先保持同一文件避免拆散状态语义。 */
-import {
-  BIGMODEL_PROVIDER_ID,
-  isStartPlanModelProviderId,
-  resolveModelProviderFamilySpecByProviderId,
-  type UsageEntitlementSubscriptionDetail,
-  type UsageQuotaLimit,
-  type ZCodeAccountAccess,
-  type ZCodeProviderAccountAccess,
-} from "@zcode/shared";
+import { isStartPlanModelProviderId, resolveModelProviderFamilySpecByProviderId, type UsageEntitlementSubscriptionDetail, type UsageQuotaLimit, type ZCodeAccountAccess, type ZCodeProviderAccountAccess } from "@zcode/shared";
 import { InfoIcon, Loader2Icon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button.js";
@@ -19,38 +11,20 @@ import { CodingPlanQuotaResetOpportunity } from "@/components/coding-plan-quota-
 import { buildCodingPlanQuotaResetDialogConfig } from "@/components/coding-plan-quota-reset/buildCodingPlanQuotaResetDialogConfig.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useCodingPlanQuotaResetUi } from "@/hooks/useCodingPlanQuotaResetUi.js";
-import {
-  formatQuotaResetTime,
-  isCodingPlanQuotaLimitFull,
-  isSameLimitCategory,
-} from "@/lib/codingPlanQuotaPresentation.js";
-import {
-  mergeCodingPlanQuotaResetOpportunityBadges,
-  resolveCodingPlanQuotaResetLimit,
-} from "@/lib/codingPlanQuotaResetUi.js";
-import {
-  createCodingPlanFunnelContext,
-  resolveCodingPlanEntryPlanState,
-  type CodingPlanFunnelContext,
-} from "@/lib/codingPlanFunnelTelemetry.js";
-import {
-  type CodingPlanStatus,
-  type CodingPlanProviderId,
-  type TeamPlanAvailabilityReason,
-} from "./constants.js";
+import { formatQuotaResetTime, isCodingPlanQuotaLimitFull, isSameLimitCategory } from "@/lib/codingPlanQuotaPresentation.js";
+import { mergeCodingPlanQuotaResetOpportunityBadges, resolveCodingPlanQuotaResetLimit } from "@/lib/codingPlanQuotaResetUi.js";
+import { type CodingPlanFunnelContext } from "@/lib/codingPlanFunnelTelemetry.js";
+import { type CodingPlanStatus, type CodingPlanProviderId, type TeamPlanAvailabilityReason } from "./constants.js";
 import type { CodingPlanStatusPanelViewState } from "./codingPlanStatusPanelViewState.js";
 import { CodingPlanStatusMeta, StartPlanStatusMeta } from "./CodingPlanStatusMeta.js";
-import { CodingPlanStatusActions, CodingPlanUpgradeAction } from "./CodingPlanStatusActions.js";
+import { CodingPlanStatusActions } from "./CodingPlanStatusActions.js";
 import type { CodingPlanLoginOptions } from "./codingPlanPricingCards.js";
 import type { PurchaseAudience } from "./codingPlanEnterpriseTiers.js";
-import { StartPlanCard } from "./StartPlanCard.js";
+
 import { StartPlanQuotaStatusCard } from "./StartPlanQuotaStatusCard.js";
 import { resolveStartPlanQuotaCardEntries } from "./StartPlanBalanceCard.js";
-import { useStartPlanPreview } from "./useStartPlanPreview.js";
-import {
-  BigModelRegistrationHint,
-  isBigModelUnregisteredAuthError,
-} from "./BigModelRegistrationHint.js";
+
+
 import { formatQuotaModelDisplayName } from "./quotaModelDisplayName.js";
 
 const CODING_PLAN_USAGE_SUMMARY_COLORS = [
@@ -148,22 +122,21 @@ export function CodingPlanStatusPanel({
   subscriptionDetails,
   quotaLimits = [],
   mcpQuotaLimit = null,
-  authError,
-  onOpenRegistration,
+  authError: _authError,
   onLogin,
   onRetry,
   reloginOnFailure = false,
   onOpenPurchase,
   onDisconnect,
-  onOpenUpgradePlans,
-  purchaseInitialAudience = "personal",
+  onOpenUpgradePlans: _onOpenUpgradePlans,
+  purchaseInitialAudience: _purchaseInitialAudience = "personal",
   loginActionPlacement = "inline",
   loginActionVisible = false,
   usageDetailsVisible = true,
-  upgradeActionVisible = true,
+  upgradeActionVisible: _upgradeActionVisible = true,
   upgradePlansVisible: controlledUpgradePlansVisible,
   onUpgradePlansVisibleChange,
-  startPlanPreviewVisible = true,
+  startPlanPreviewVisible: _startPlanPreviewVisible = true,
   statusLabelId,
   statusMessage,
   teamPlanAvailabilityReason,
@@ -187,7 +160,6 @@ export function CodingPlanStatusPanel({
   /** 官方 Server MCP 额度（服务端下发的总额度）。不在 quota.limits[] 里，由 nav item 单独透传。 */
   mcpQuotaLimit?: UsageQuotaLimit | null;
   authError?: string | null;
-  onOpenRegistration?: () => void;
   onLogin?: (options?: CodingPlanLoginOptions) => number | void | Promise<void>;
   /** 凭据获取失败提供主动重新登录，不据此自动退出账号。 */
   reloginOnFailure?: boolean;
@@ -219,8 +191,8 @@ export function CodingPlanStatusPanel({
   const { intl } = useZCodeIntl();
   const [internalUpgradePlansVisible, setInternalUpgradePlansVisible] = useState(false);
   const [startPlanEntitlementRefreshing, setStartPlanEntitlementRefreshing] = useState(false);
-  const upgradePlansVisible = controlledUpgradePlansVisible ?? internalUpgradePlansVisible;
-  const setUpgradePlansVisible = onUpgradePlansVisibleChange ?? setInternalUpgradePlansVisible;
+  const _upgradePlansVisible = controlledUpgradePlansVisible ?? internalUpgradePlansVisible;
+  const _setUpgradePlansVisible = onUpgradePlansVisibleChange ?? setInternalUpgradePlansVisible;
   const refreshStartPlanEntitlement = async () => {
     if (!onQuotaResetEntitlementRefresh || startPlanEntitlementRefreshing) {
       return;
@@ -253,7 +225,7 @@ export function CodingPlanStatusPanel({
   const isNotPurchased = effectiveViewState.displayStatus === "notPurchased";
   const actionIsDisconnected = effectiveViewState.actionStatus === "disconnected";
   const isStartPlanProvider = isStartPlanModelProviderId(providerId);
-  const providerIcon =
+  const _providerIcon =
     resolveModelProviderFamilySpecByProviderId(providerId)?.oauthProviderId ?? null;
   const canDisconnectProvider =
     !isStartPlanProvider &&
@@ -310,13 +282,10 @@ export function CodingPlanStatusPanel({
     Boolean(onLogin);
   const rawPlanLevel = planLevel?.trim() ?? "";
   const normalizedPlanLevel = rawPlanLevel.toUpperCase();
-  const isMaxPlanLevel = isMaxCodingPlanLevel(rawPlanLevel);
+  const _isMaxPlanLevel = isMaxCodingPlanLevel(rawPlanLevel);
   const displayPlanLevel = /^GLM[\s_-]+CODING\b/i.test(rawPlanLevel)
     ? formatQuotaModelDisplayName(rawPlanLevel)
     : normalizedPlanLevel;
-  const canUpgrade =
-    // Max 已是最高档但仍需要续期入口，不能因为不可升级就隐藏按钮。
-    upgradeActionVisible && isPurchased && !isChecking && !isUnsupported;
   const canManageCodingPlan =
     !isDisconnected &&
     !isChecking &&
@@ -324,99 +293,6 @@ export function CodingPlanStatusPanel({
     isPurchased &&
     Boolean(purchaseUrl) &&
     Boolean(onOpenPurchase);
-  const disconnectedStartPlanPricingVisible =
-    isStartPlanProvider && (isDisconnected || isNotPurchased);
-  const startPlanCardVisible =
-    startPlanPreviewVisible && disconnectedStartPlanPricingVisible && !upgradePlansVisible;
-  const startPlanPreview = useStartPlanPreview({
-    enabled: startPlanCardVisible,
-  });
-  const shouldShowBigModelRegistrationHint =
-    isChecking &&
-    providerIcon === BIGMODEL_PROVIDER_ID &&
-    isBigModelUnregisteredAuthError(authError);
-  const createSettingPlanCardFunnelContext = (eventText: string) =>
-    createCodingPlanFunnelContext({
-      providerId,
-      // 修复原因：Start Plan 的升级入口与普通 Coding Plan 套餐卡属于不同链接方式，
-      // 埋点必须单独标识，避免把 Start Plan 用户误归类为普通套餐卡来源。
-      upgradeSource: isStartPlanProvider ? "setting_start_plan_card" : "setting_plan_card",
-      eventRegion: "app.setting",
-      eventText,
-      entryPlanState: resolveCodingPlanEntryPlanState({
-        displayStatus: effectiveViewState.displayStatus,
-        providerId,
-        planLevel,
-      }),
-    });
-  const openUpgradePlans = (
-    initialAudience: PurchaseAudience,
-    nextFunnelContext: CodingPlanFunnelContext | null,
-  ) => {
-    if (onOpenUpgradePlans) {
-      // Coding Plan 购买流程不应继续挂载在 Model Settings 内部；
-      // 状态卡只负责发起意图，由弹窗 hook 承载购买面板。
-      onOpenUpgradePlans({
-        initialAudience,
-        funnelContext: nextFunnelContext,
-      });
-      return;
-    }
-    setUpgradePlansVisible(true);
-  };
-  const upgradeAction = canUpgrade ? (
-    <CodingPlanUpgradeAction
-      loginLoading={effectiveViewState.loginLoading}
-      upgradePlansVisible={upgradePlansVisible}
-      actionLabelId={
-        isMaxPlanLevel
-          ? "settings.modelProvider.codingPlan.renew"
-          : "settings.modelProvider.codingPlan.upgrade"
-      }
-      onUpgradePlansVisibleChange={(visible) => {
-        if (visible) {
-          openUpgradePlans(
-            purchaseInitialAudience,
-            createSettingPlanCardFunnelContext(
-              intl.formatMessage({
-                id: isMaxPlanLevel
-                  ? "settings.modelProvider.codingPlan.renew"
-                  : "settings.modelProvider.codingPlan.upgrade",
-              }),
-            ),
-          );
-          return;
-        }
-        setUpgradePlansVisible(visible);
-      }}
-    />
-  ) : null;
-  const buyAction =
-    !isStartPlanProvider && !canUpgrade && isNotPurchased && !isChecking && !isUnsupported ? (
-      <CodingPlanEntryButton
-        type="button"
-        size="lg"
-        // 未购买状态也可能正在等待权益接口返回；此时必须和 Upgrade
-        // 按钮一样禁用，避免旧的 notPurchased 快照被提前提交为购买入口。
-        disabled={effectiveViewState.loginLoading}
-        onClick={() => {
-          openUpgradePlans(
-            purchaseInitialAudience,
-            createSettingPlanCardFunnelContext(
-              intl.formatMessage({
-                id: "settings.modelProvider.codingPlan.subscribe",
-              }),
-            ),
-          );
-        }}
-      >
-        {/* 单卡同步可能晚于全局套餐查询；仅禁用会丢失等待反馈，和 Upgrade 保持一致。 */}
-        {effectiveViewState.loginLoading ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
-        {intl.formatMessage({
-          id: "settings.modelProvider.codingPlan.subscribe",
-        })}
-      </CodingPlanEntryButton>
-    ) : null;
   const inlineDisconnectVisible = canDisconnectProvider && !isPurchased;
   const planTitle = resolveCodingPlanStatusCardTitle({
     isPurchased,
@@ -482,8 +358,6 @@ export function CodingPlanStatusPanel({
         }
         onUnlink={canDisconnectProvider ? onDisconnect : undefined}
       />
-    ) : shouldShowBigModelRegistrationHint ? (
-      <BigModelRegistrationHint onOpenRegistration={onOpenRegistration} />
     ) : inlineDisconnectVisible ? (
       <CodingPlanStatusMeta
         statusLabel={notPurchasedStatusLabel ?? intl.formatMessage({ id: statusBadgeId })}
@@ -536,12 +410,6 @@ export function CodingPlanStatusPanel({
       {effectiveViewState.loginLoading ? <Loader2Icon className="size-3.5 animate-spin" /> : null}
       {intl.formatMessage({ id: loginButtonId }, { provider: providerName })}
     </Button>
-  ) : upgradeAction ? (
-    // 升级是 Plan Card 的主操作，和连接入口同属卡片级 action。
-    // 放在标题旁会随标题换行抖动；放到右侧并使用同尺寸按钮，层级和位置都更稳定。
-    upgradeAction
-  ) : buyAction ? (
-    buyAction
   ) : null;
   const statusContent = (
     <>
@@ -640,9 +508,6 @@ export function CodingPlanStatusPanel({
     <div className="space-y-3">
       {planCards}
 
-      {startPlanCardVisible && !startPlanPreview.loading && startPlanPreview.preview ? (
-        <StartPlanCard preview={startPlanPreview.preview} />
-      ) : null}
     </div>
   );
 }
