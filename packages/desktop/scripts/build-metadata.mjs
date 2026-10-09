@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveDesktopProductFlavor } from "./desktop-product-identity.mjs";
 
 const require = createRequire(import.meta.url);
 const moduleDir = import.meta.dirname;
@@ -57,6 +58,29 @@ function normalizeVersion(version) {
   return normalized || version;
 }
 
+/**
+ * 改装包的发布号只从 CI 的 tag 注入（`ZCODE_MOD_VERSION=v3.14.3-mod.4`）。
+ * 正式/预览身份永远用 package.json 的基线版本，避免残留的环境变量改掉正式包版本号；
+ * mod 身份带上发布号后，About、安装包文件名和 Windows「应用和功能」都能显示到具体哪一版。
+ */
+export const ZCODE_MOD_VERSION_ENV = "ZCODE_MOD_VERSION";
+
+function resolveModVersion(baseVersion, env) {
+  const raw = env[ZCODE_MOD_VERSION_ENV]?.trim() ?? "";
+  if (raw === "") {
+    return baseVersion;
+  }
+
+  const version = normalizeVersion(raw);
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$/.test(version)) {
+    throw new Error(
+      `invalid ${ZCODE_MOD_VERSION_ENV}=${raw}; expected a version like v3.14.3-mod.4`,
+    );
+  }
+
+  return version;
+}
+
 function resolveInstalledPackageVersion(packageName, fallbackVersion) {
   try {
     const packageJsonPath = require.resolve(`${packageName}/package.json`, { paths: [desktopDir] });
@@ -82,9 +106,13 @@ function resolveCommitId() {
 export function collectBuildMetadata() {
   const rootPackageJson = readJson(resolve(workspaceDir, "package.json"));
   const desktopPackageJson = readJson(resolve(desktopDir, "package.json"));
+  const baseVersion = normalizeVersion(rootPackageJson.version);
 
   return {
-    appVersion: normalizeVersion(rootPackageJson.version),
+    appVersion:
+      resolveDesktopProductFlavor() === "mod"
+        ? resolveModVersion(baseVersion, process.env)
+        : baseVersion,
     buildCommitId: resolveCommitId(),
     buildTime: new Date().toISOString(),
     electronBuilderVersion: resolveInstalledPackageVersion(
