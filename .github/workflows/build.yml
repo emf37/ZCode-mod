@@ -144,6 +144,9 @@ jobs:
           # AppUserModelId / Explorer 右键菜单键都与正式版分开，两个安装可以并存。
           # 业务数据根 ~/.zcode 仍与正式版共享，以便接管已有会话。
           ZCODE_MOD_IDENTITY: "1"
+          # 改装包的发布号只从 tag 注入（v3.14.3-mod.4 → About 与产物名里的 3.14.3-mod.4）。
+          # 分支构建没有 tag，退回 package.json 的基线版本；dispatch 发布时用 release_tag。
+          ZCODE_MOD_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.release_tag || '' }}
           ZCODE_COMMIT: ${{ github.sha }}
           # 桌面安装包不依赖 mock-cdn remote 资产；跳过它可省掉跨平台资源的下载与打包，
           # 这是仓库为此场景预留的开关（见 prepare-runtime-assets.mjs）。
