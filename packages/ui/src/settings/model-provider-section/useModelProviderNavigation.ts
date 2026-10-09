@@ -19,7 +19,6 @@ import {
   CODING_PLAN_PROVIDER_SPECS,
   type CodingPlanEntitlementState,
   type ModelProviderNavGroup,
-  type PresetProviderSpec,
 } from "@/settings/model-provider-section/constants.js";
 import { pickCodingPlanEntitlementProvider } from "@/lib/codingPlanProvider.js";
 import {
@@ -37,12 +36,7 @@ import {
   resolveCodingPlanEntitlementState,
 } from "@/settings/model-provider-section/providerFamilyConnectionVisibility.js";
 
-interface PresetProviderWithConfig extends PresetProviderSpec {
-  provider: ProviderSettingsFormProvider | null;
-}
-
 interface UseModelProviderNavigationOptions {
-  presetProviders: PresetProviderWithConfig[];
   modelProviders: ProviderSettingsFormProvider[];
   /**
    * 当前账号明确有权益的 Provider。缺省等价于尚无账号权益；生产设置页始终显式传入。
@@ -64,7 +58,6 @@ interface UseModelProviderNavigationOptions {
 }
 
 export function useModelProviderNavigation({
-  presetProviders,
   modelProviders,
   entitledAccountProviderIds = new Set(),
   modelProvidersLoading = false,
@@ -178,38 +171,10 @@ export function useModelProviderNavigation({
   );
 
   const navigationGroups = useMemo<ModelProviderNavGroup[]>(() => {
-    const groups: ModelProviderNavGroup[] = [
-      {
-        id: "preset",
-        title: intl.formatMessage({ id: "settings.modelProvider.presetTitle" }),
-        items: [
-          ...presetProviders.map(({ id, displayName, provider }) => {
-            const statusProvider = resolvePresetFamilyStatusProvider({
-              presetId: id,
-              provider,
-              connectionModeItems: connectionModeCodingPlanItems,
-              connectionSelections,
-              modelProviders,
-            });
-            return {
-              key: createPresetProviderNodeKey(id),
-              type: "preset" as const,
-              presetId: id,
-              label: displayName,
-              logo: modelProviders.find(
-                (candidate) =>
-                  candidate.providerId ===
-                  resolveModelProviderFamilySpecByProviderId(id)?.individualCodingPlanProviderId,
-              )?.config.logo,
-              provider,
-              displayName,
-              statusProvider,
-              statusActive: statusProvider?.executable === true,
-            };
-          }),
-          ...codingPlanItems.filter((item) => isStartPlanModelProviderId(item.presetId)),
-        ],
-      },
+    // 侧栏只列用户自己的供应商。上游这里还有一个 preset 分组（分组标题「智谱」，
+    // 内容是 Z.ai / BigModel 预置入口与 Start Plan），属于厂商自己的套餐与注册入口，
+    // 改装版不展示。对应详情视图仍留在 Detail.tsx，只是侧栏没有入口能到达。
+    return [
       {
         id: "custom",
         title: intl.formatMessage({ id: "settings.modelProvider.customTitle" }),
@@ -222,19 +187,11 @@ export function useModelProviderNavigation({
         })),
       },
     ];
-
-    return groups;
   }, [
     customProviders,
-    codingPlanItems,
-    connectionModeCodingPlanItems,
     // 左侧导航分组标题在这个 memo 内格式化。
     // 语言切换时 provider/权益引用可能不变，必须依赖 intl 才能刷新旧 locale 的文案。
     intl,
-    connectionSelections,
-    pendingConnectionSelections,
-    presetProviders,
-    modelProviders,
   ]);
 
   const navigationItems = useMemo(() => {
@@ -336,38 +293,6 @@ function shouldShowCodingPlanForProviderFamilyDomain(
     return true;
   }
   return resolveProviderFamilyDomainFromOAuthProvider(oauthProviderId) === providerFamilyDomain;
-}
-
-function resolvePresetFamilyStatusProvider({
-  presetId,
-  provider,
-  connectionModeItems,
-  connectionSelections,
-  modelProviders,
-}: {
-  presetId: PresetProviderSpec["id"];
-  provider: ProviderSettingsFormProvider | null;
-  connectionModeItems: ModelProviderNavGroup["items"];
-  connectionSelections: ProviderFamilyConnectionSelectionSettings;
-  modelProviders: ProviderSettingsFormProvider[];
-}): ProviderSettingsFormProvider | null {
-  const familySpec = resolveModelProviderFamilySpecByProviderId(presetId);
-  if (!familySpec) {
-    return provider;
-  }
-  const connectionItem = pickFamilyModeNavigationItem(
-    connectionModeItems.filter((item) => item.type !== "codingPlanLoading"),
-    familySpec.id,
-    connectionSelections,
-  );
-  if (!connectionItem || !isPlanConnectionNavigationItem(connectionItem)) {
-    return null;
-  }
-  // 菜单 Team 项可能从个人项派生，携带的 provider 不是团队执行身份。
-  // 必须按具体套餐 ID 回到 Settings View，不能用菜单权益或继承的 provider 点灯。
-  return (
-    modelProviders.find((candidate) => candidate.providerId === connectionItem.presetId) ?? null
-  );
 }
 
 function resolveFallbackModelProviderNodeKey({

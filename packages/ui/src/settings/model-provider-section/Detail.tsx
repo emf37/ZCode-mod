@@ -7,7 +7,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { type CodingPlanStatus, type ModelProviderNavItem } from "./constants.js";
 import { InlineEditableProviderCard } from "./InlineEditableProviderCard.js";
-import { ModelProviderLoadingCard, PresetProviderPlaceholderCard, CodingPlanStatusPanel } from "./StatusCards.js";
+import {
+  ModelProviderEmptyCard,
+  ModelProviderLoadingCard,
+  PresetProviderPlaceholderCard,
+  CodingPlanStatusPanel,
+} from "./StatusCards.js";
 import { type CodingPlanLoginOptions } from "./codingPlanPricingCards.js";
 
 import { resolveCodingPlanStatusPanelViewState } from "./codingPlanStatusPanelViewState.js";
@@ -346,6 +351,12 @@ export function ModelProviderSectionDetail({
   }, [selectedItemKey]);
 
   if (!selectedNavItem) {
+    // 侧栏可能一个供应商都没有（改装版不再注入厂商预置入口）。这时继续显示 loading 会让
+    // 用户以为页面卡住；只有确实还有内容在加载时才保留 loading。
+    if (!presetLoading) {
+      return <ModelProviderEmptyCard messageId="settings.modelProvider.empty" />;
+    }
+
     return <ModelProviderLoadingCard loadingLabel={loadingLabel} />;
   }
 

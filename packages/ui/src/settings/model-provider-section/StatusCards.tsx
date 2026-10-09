@@ -88,6 +88,16 @@ export function ModelProviderLoadingCard({ loadingLabel }: { loadingLabel: strin
   );
 }
 
+export function ModelProviderEmptyCard({ messageId }: { messageId: string }) {
+  const { intl } = useZCodeIntl();
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-3 text-ui-base text-foreground-subtle">
+      {intl.formatMessage({ id: messageId })}
+    </div>
+  );
+}
+
 export function PresetProviderPlaceholderCard({
   displayName,
   messageId = "settings.modelProvider.presetEmpty",
