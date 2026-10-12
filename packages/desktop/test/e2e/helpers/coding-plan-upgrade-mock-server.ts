@@ -4,8 +4,6 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { once } from "node:events";
 import { readFile } from "node:fs/promises";
 import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-import { createMarketingTouchFixture } from "./marketing-touch-fixture.js";
-import { rewardsWebsiteFixture } from "./rewards-website-fixture.js";
 
 export type CodingPlanUpgradeMockScenario =
   | "manual-claim-experience"
@@ -48,22 +46,7 @@ const DEFAULT_FULL_E2E_SPEC_GLOB = "./test/e2e/**/*.test.ts";
 export function resolveCodingPlanUpgradeMockScenario(
   specs: readonly string[],
 ): CodingPlanUpgradeMockScenario | null {
-  if (specs.some((spec) => spec.includes("marketing-touch-"))) {
-    return "manual-claim-experience";
-  }
-  if (specs.some((spec) => spec.includes("coding-plan-upgrade-personal-system-busy"))) {
-    return "personal-system-busy";
-  }
-  if (specs.some((spec) => spec.includes("coding-plan-upgrade-personal-sold-out"))) {
-    return "personal-sold-out";
-  }
-  if (
-    specs.some(
-      (spec) =>
-        spec.includes("coding-plan-upgrade-webview-refresh-provider") ||
-        spec.includes("account-key-usage-scene"),
-    )
-  ) {
+  if (specs.some((spec) => spec.includes("account-key-usage-scene"))) {
     return "webview-refresh-provider";
   }
   return null;
@@ -94,7 +77,6 @@ export async function resetCodingPlanUpgradeMockServer(
 
 export async function startCodingPlanUpgradeMockServer(
   scenario: CodingPlanUpgradeMockScenario,
-  options: { marketingTouch?: boolean } = {},
 ): Promise<CodingPlanUpgradeMockServer> {
   // 修复原因：pnpm filter 会把 E2E cwd 切到 packages/desktop，不能用 cwd 定位仓库级 fixture。
   const clientConfigFixtureUrl = new URL(
@@ -106,22 +88,8 @@ export async function startCodingPlanUpgradeMockServer(
   ) as CodingPlanClientConfigFixture;
   const requests: CodingPlanUpgradeMockRequest[] = [];
   const state = createCodingPlanUpgradeMockState(baseClientConfigPayload, scenario);
-  // 同套餐场景也供旧测试复用，不能隐式注入需要 release 的营销领取暂停。
-  const marketing = options.marketingTouch ? await createMarketingTouchFixture() : null;
   const server = createServer((request, response) => {
     void (async () => {
-      if (
-        marketing &&
-        /^\/(cn|en)\/rewards$/.test(new URL(request.url ?? "/", "http://localhost").pathname)
-      ) {
-        response.writeHead(200, {
-          "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "no-store",
-        });
-        response.end(rewardsWebsiteFixture);
-        return;
-      }
-      if (await marketing?.handle(request, response)) return;
       await handleRequest(baseClientConfigPayload, state, requests, request, response);
     })().catch((error) => {
       if (!response.headersSent) {
@@ -143,7 +111,6 @@ export async function startCodingPlanUpgradeMockServer(
       return state.scenario;
     },
     stop: async () => {
-      marketing?.stop();
       state.webviewWaiters.splice(0).forEach((release) => release());
       state.customerInfoWaiters.splice(0).forEach((release) => release());
       state.inventoryWaiters.splice(0).forEach((release) => release());

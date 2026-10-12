@@ -2334,9 +2334,7 @@ async function startCodingPlanUpgradeE2EMock(
     applyCodingPlanUpgradeMockEnv(process.env, codingPlanUpgradeMockServer.baseUrl);
     return;
   }
-  codingPlanUpgradeMockServer = await startCodingPlanUpgradeMockServer(scenario, {
-    marketingTouch: specs.some((spec) => spec.includes("marketing-touch-")),
-  });
+  codingPlanUpgradeMockServer = await startCodingPlanUpgradeMockServer(scenario);
   process.env[CODING_PLAN_UPGRADE_MOCK_BASE_URL_ENV] = codingPlanUpgradeMockServer.baseUrl;
   applyCodingPlanUpgradeMockEnv(process.env, codingPlanUpgradeMockServer.baseUrl);
 }
@@ -4639,10 +4637,6 @@ export const config: WebdriverIO.Config = {
         const codingPlanUpgradeMockBaseUrl =
           process.env[CODING_PLAN_UPGRADE_MOCK_BASE_URL_ENV]?.trim();
         if (codingPlanUpgradeMockBaseUrl) {
-          // 正式 Rewards 用例使用自托管网页，不依赖开发者的 localhost:3000 服务。
-          if (configuredE2ESpecs.some((spec) => spec.includes("marketing-touch-rewards"))) {
-            process.env.VITE_REWARDS_WEBVIEW_ORIGIN = codingPlanUpgradeMockBaseUrl;
-          }
           if (!config.runnerEnv) {
             throw new Error(
               "wdio config 缺少 runnerEnv，coding plan upgrade mock 端口无法透传给 worker",
