@@ -1,6 +1,6 @@
 # 公共内容弹窗与 Hero 资源
 
-更新日期：2026-09-10。范围：客户端公共组件与 Hero 资源；正式投放接入与 Banner 语义见 [marketing-touch-client.md](marketing-touch-client.md)，不包含运营后台。
+更新日期：2026-09-10。范围：客户端公共组件与 Hero 资源；不包含运营后台。
 
 ## 当前实现
 
@@ -21,7 +21,7 @@ App 使用 Marketing Touch GET 下发，不再有「内容 Mock」按钮，也�
 
 Hero ZIP 及 HTML 源资源现由独立制作工作区维护，App 仓库的旧资源目录已归档移除；位置与验证命令见 [资源制作迁移](weekend-banner-resource-bundle.md#2026-09-12-制作工作区迁移)。自动化测试服务器 `packages/desktop/scripts/cloud-content-mock.mjs` 及其 fixture 保留，仅由测试调用或单独运行，不接入 App 启动链路。
 
-接口 fixture 测试：`node --test packages/desktop/scripts/cloud-content-mock.test.mjs`。App 验证使用 `marketing-touch-delivery.test.ts`，同时断言旧入口不存在和授权 ZIP/上报流程正常。旧预览面板专属 UI 单测及 E2E 已退役，历史代码可从 Git 恢复。
+接口 fixture 测试：`node --test packages/desktop/scripts/cloud-content-mock.test.mjs`。营销投放退役后不再有 App 侧投放 E2E；旧预览面板专属 UI 单测及 E2E 也已退役，历史代码可从 Git 恢复。
 
 ## v1 字段契约
 
