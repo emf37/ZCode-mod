@@ -501,9 +501,6 @@ ZCode wordmark 使用 `text-foreground`，辅助文字使用 `text-foreground-su
 
 ## 测试与覆盖契约
 
-手动领取体验的状态维度、剪枝决定、Desktop E2E 候选和分支覆盖率口径统一记录在
-[`docs/testing/start-plan-manual-claim-e2e-coverage.md`](testing/start-plan-manual-claim-e2e-coverage.md)。
-该功能的覆盖率必须以首次合入前共同提交 `ebae2814f5` 为 diff 基线；由于功能提交已经进入
-`staging`，禁止使用当前 `origin/staging` 的空 diff 声称覆盖完成。验收要求新增生产源码可执行行在
-focused unit/component 的标准 Istanbul line coverage 中达到 95% 以上；Desktop E2E coverage 单独作为
-跨进程链路证据，禁止合并不同 instrumentation 的 statement id 虚增覆盖率。
+手动领取体验随营销投放整体退役，对应的 Desktop E2E 与覆盖率口径文档已从工作树移除。体验套餐的
+状态维度与剪枝口径仍以 focused unit/component 的标准 Istanbul line coverage 为准，验收要求新增生产
+源码可执行行达到 95% 以上。
