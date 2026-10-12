@@ -19,7 +19,6 @@ import {
   type OAuthProviderId,
   type OAuthAccountAvailability,
   isZaiOAuthProvider,
-  resolveModelProviderFamilyIdByProviderId,
   resolveModelProviderFamilySpecByProviderId,
   resolveProviderFamilyDomainFromOAuthProvider,
   resolveStartPlanFamilyFromOAuthProvider,
@@ -36,7 +35,6 @@ import { useServices } from "@/hooks/useServices.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { logger } from "@/logger.js";
 import {
-  PRESET_PROVIDER_SPECS,
   PRESET_SUBSCRIPTION_TIMEOUT_MS,
   BIGMODEL_REGISTRATION_URL,
   type CodingPlanStatus,
@@ -150,39 +148,6 @@ function shouldRefreshCodingPlanEntitlementsAfterSave(
     (previousProvider ? getProviderFormApiKey(previousProvider).trim() : "") !==
     getProviderFormApiKey(nextProvider).trim()
   );
-}
-
-function resolveBuiltinPresetOAuthProvider(
-  presetId: BuiltinModelProviderId,
-): OAuthProviderId | null {
-  if (
-    presetId === BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan ||
-    presetId === BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan ||
-    presetId === BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan
-  ) {
-    return ZAI_PROVIDER_ID;
-  }
-  if (
-    presetId === BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan ||
-    presetId === BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan ||
-    presetId === BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan
-  ) {
-    return BIGMODEL_PROVIDER_ID;
-  }
-  return null;
-}
-
-function shouldShowPresetProviderForActiveOAuth(
-  presetId: BuiltinModelProviderId,
-  providerFamilyDomain: ProviderFamilyDomain | null | undefined,
-  availableFamilies: readonly ProviderFamilyDomain[] = [],
-): boolean {
-  const presetOAuthProvider = resolveBuiltinPresetOAuthProvider(presetId);
-  if (!providerFamilyDomain || !presetOAuthProvider) {
-    return true;
-  }
-  const family = resolveModelProviderFamilyIdByProviderId(presetId);
-  return family === providerFamilyDomain || (family !== null && availableFamilies.includes(family));
 }
 
 function clearPendingProviderFamilyConnectionSelection(
@@ -597,21 +562,6 @@ export function ModelProviderSection({
     };
   }, [providerConnectionRefreshSignal, refreshCodingPlanPurchaseTokenState]);
 
-  const presetProviders = useMemo(
-    () =>
-      PRESET_PROVIDER_SPECS.filter((preset) =>
-        shouldShowPresetProviderForActiveOAuth(
-          preset.id,
-          effectiveProviderFamilyDomain,
-          accountAvailability?.families,
-        ),
-      ).map((preset) => ({
-        ...preset,
-        provider: modelProviders.find((provider) => provider.providerId === preset.id) ?? null,
-      })),
-    [effectiveProviderFamilyDomain, accountAvailability, modelProviders],
-  );
-
   useEffect(() => {
     if (!presetSubscriptionProviderId) {
       return;
@@ -677,7 +627,6 @@ export function ModelProviderSection({
 
   const { navigationGroups, navigationItems, selectedNavItem, navigationUnavailable } =
     useModelProviderNavigation({
-      presetProviders,
       modelProviders,
       entitledAccountProviderIds,
       modelProvidersLoading: loading,
