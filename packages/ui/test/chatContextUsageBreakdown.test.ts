@@ -1621,12 +1621,11 @@ describe("Coding Plan usage remaining panel state", () => {
 });
 
 describe("Start Plan context balance panel", () => {
-  it("renders Today's balance meters with an upgrade action", () => {
+  it("renders Today's balance meters", () => {
     const html = renderToStaticMarkup(
       createElement(ChatStartPlanBalancePanel, {
         config: {
           loading: false,
-          onUpgradeClick: vi.fn(),
           snapshot: {
             generatedAt: new Date(2026, 5, 13, 8, 15).getTime(),
             authenticated: true,
@@ -1690,10 +1689,6 @@ describe("Start Plan context balance panel", () => {
     expect(html).not.toContain("750K");
     expect(html).not.toContain("1M");
     expect(html).not.toContain("settings.modelProvider.startPlan.balance.used");
-    expect(html).toContain("chat.quota.action.upgrade");
-    expect(html).toContain("button-gradient");
-    expect(html).toContain("billing-discount-badge:surface:compact");
-    expect(html).toContain("billing-discount-info");
     expect(html).toContain("grid-cols-1");
     expect(html).toContain("space-y-0.5");
     expect(html).toContain("h-1.5");
@@ -1704,7 +1699,6 @@ describe("Start Plan context balance panel", () => {
     expect(html).toContain("duration-500");
     expect(html).toContain("motion-reduce:transition-none");
     expect(html).not.toContain("background-color");
-    expect(html).toContain("lucide-rocket");
   });
 
   it("omits the date for today's Start Plan balance renew time", () => {

@@ -17,7 +17,6 @@ vi.mock("@/ChatErrorBanner.js", async () => {
     ChatErrorBanner: (props: {
       error: { message: string };
       onOpenModelSettings?: () => void;
-      onOpenUpgrade?: () => void;
     }) => {
       captured.chatErrorBannerProps = props;
       return React.createElement(
@@ -155,7 +154,6 @@ function renderComposerWithError(
   message: string,
   actions: {
     onOpenModelSettings?: () => void;
-    onOpenModelUpgrade?: () => void;
     contextHeader?: ReactNode;
   } = {},
 ): string {
@@ -327,17 +325,14 @@ describe("ConversationComposer error banner", () => {
     expect(html).not.toContain("bg-[var(--color-background)]");
   });
 
-  it("forwards model recovery actions to the shared error banner", () => {
+  it("forwards the model settings recovery action to the shared error banner", () => {
     const onOpenModelSettings = vi.fn();
-    const onOpenModelUpgrade = vi.fn();
 
     renderComposerWithError("No model", {
       onOpenModelSettings,
-      onOpenModelUpgrade,
     });
 
     expect(captured.chatErrorBannerProps?.onOpenModelSettings).toBe(onOpenModelSettings);
-    expect(captured.chatErrorBannerProps?.onOpenUpgrade).toBe(onOpenModelUpgrade);
   });
 
   it("does not render local queue behavior toggles in the composer", () => {
