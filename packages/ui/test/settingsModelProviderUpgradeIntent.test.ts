@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 import {
@@ -6,7 +8,12 @@ import {
 } from "@/settings/model-provider-section/codingPlanPurchaseAuth.js";
 import { CODING_PLAN_PROVIDER_SPECS } from "@/settings/model-provider-section/constants.js";
 
-describe("settings model provider upgrade intent", () => {
+function readSource(path: string) {
+  return readFileSync(resolve(process.cwd(), path), "utf8");
+}
+
+describe("settings model provider upgrade intent", () => {;
+
   it("keeps both Team Provider identities in the Coding Plan upgrade boundary", () => {
     expect(normalizeCodingPlanProviderId(BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan)).toBe(
       BUILTIN_MODEL_PROVIDER_IDS.zaiTeamCodingPlan,
@@ -26,5 +33,16 @@ describe("settings model provider upgrade intent", () => {
     expect(CODING_PLAN_PROVIDER_SPECS.map((spec) => spec.id)).not.toContain(
       BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan,
     );
+  });
+;
+;
+
+  it("opens no-model Set action directly to model provider settings", () => {
+    const composerToolbarSource = readSource("packages/ui/src/v4/composer/V4ComposerToolbar.tsx");
+
+    expect(composerToolbarSource).toContain('setPendingSettingsSectionIntent("modelProvider")');
+    expect(composerToolbarSource).toContain("handleOpenModelProviderSettings");
+    expect(composerToolbarSource).toContain("onManageModels={handleOpenModelProviderSettings}");
+    expect(composerToolbarSource).not.toContain("onManageModels={openSettingsTab}");
   });
 });
