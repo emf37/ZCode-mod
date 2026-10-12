@@ -243,7 +243,8 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "ZCode $RELEASE_TAG（上游 3.14.3 + 插件还原 + LF 修复）"
+            BASE_VERSION="$(node -p "require('./package.json').version")"
+            echo "ZCode $RELEASE_TAG（基于上游 $BASE_VERSION；移除厂商营销与购买/升级漏斗，保留用量与配额）"
             echo
             echo "### 校验"
             echo '```'
