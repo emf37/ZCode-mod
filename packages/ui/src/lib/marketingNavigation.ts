@@ -1,3 +1,6 @@
+// Mod 边界（死代码）：requestMarketingNavigation 的调用方（营销活动控制器）已随营销触达移除，
+// 本模块只剩 SettingsPage / ModelProviderSection / PluginStorePage 的接收端，永远不会收到请求。
+// 不要为新入口接线；若要整层移除，需同时删除上述三个接收端与 shared 的 navigate schema。
 import { createStore } from "zustand/vanilla";
 import { logger } from "@/logger.js";
 import type { MarketingAction } from "@zcode/shared";
