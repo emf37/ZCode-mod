@@ -1,3 +1,7 @@
+// Mod 边界（勿接线）：host 侧营销触达服务在改装版中是刻意保留的休眠代码 ——
+// 渲染层入口（活动卡片、弹窗、任务完成刷新、设置页导航请求）已全部移除，
+// 全仓库没有 query/report 的调用方，因此本服务不会主动请求 /api/v1/marketing/touch。
+// 上游若新增营销 UI，先确认改装版是否需要，再决定是否接线（注册点在 services/src/node.ts）。
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { parseMarketingTouchResponse, type ApiClient } from "@zcode/shared";
