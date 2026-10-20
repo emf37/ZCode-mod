@@ -1218,6 +1218,10 @@ exceptions:
     rule: unmanaged-new-file
     paths: [apps/zcode-cli/packages/zcode-site-plugin/skills/site-deploy/templates/static-server.mjs]
     reason: site-deploy 技能复制进用户部署包的静态站服务器模板，只在 Sites runner 的容器里由 start.sh 执行；仓库代码不 import 它，也不属于任何运行时模块。同目录的 start.sh 模板是 shell，不受本规则约束。
+  - id: mod-devendor-sidebar-bottom-activity
+    rule: unmanaged-new-file
+    paths: [packages/ui/src/sidebar-activity/SidebarBottomActivity.tsx]
+    reason: 改装版移除了左下角共享槽位的营销 banner，只保留 GlobalNoticeSurface；该路径被上游计入新引入文件，按规则需登记例外。槽位语义再变更时须重新核对。
   - id: opensource-cua-test-project-config
     rule: unmanaged-new-file
     paths: [packages/zcode-cua/vitest.config.ts]
