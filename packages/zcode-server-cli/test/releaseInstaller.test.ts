@@ -117,9 +117,18 @@ describe("release installer", () => {
     const layout = await resolveCanonicalServerLayout(aliasServerRoot);
     const installed = await new ReleaseInstaller(layout).installArchive({ archivePath, target: "linux-x64", version: "1.2.5" });
     await new ReleaseManager(layout).applyPending();
-    // runtime/node 换成指向系统 echo 的链接：能观察 launcher 实际 exec 的 release，又不触发 XProtect 首次扫描。
+    // runtime/node 换成能观察 launcher 实际 exec 的 release 的探针，又不触发 XProtect 首次扫描。
+    // 部分 Linux 发行版把 /bin/echo 指向 coreutils 多调用二进制：按 argv[0]=node 执行会报
+    // "unknown program 'node'"，因此 Linux 用最小 shell 存根，其它 POSIX 保持 /bin/echo 链接。
     await rm(join(installed.releaseDir, "runtime", "node"));
-    await symlink("/bin/echo", join(installed.releaseDir, "runtime", "node"));
+    if (process.platform === "linux") {
+      await writeFile(join(installed.releaseDir, "runtime", "node"), '#!/bin/sh\necho "$@"\n', {
+        encoding: "utf8",
+        mode: 0o755,
+      });
+    } else {
+      await symlink("/bin/echo", join(installed.releaseDir, "runtime", "node"));
+    }
     const output = await new Promise<string>((resolve, reject) => {
       execFile("/bin/sh", [join(aliasServerRoot, "bin", "zcode"), "serve", "--daemon"], (error, stdout, stderr) => {
         if (error) reject(new Error(`${error.message}: ${stderr}`));
