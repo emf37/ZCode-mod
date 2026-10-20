@@ -287,7 +287,7 @@ describe("SessionPane error banner wiring", () => {
     "remote:ssh:example.com:22:dev:/workspace",
     "remote:wsl:ubuntu:/workspace",
     "remote:docker:dev-box:/workspace",
-  ])("远程 workspace %s 缺模型时使用远端措辞并保留本机升级动作", (workspaceIdentity) => {
+  ])("远程 workspace %s 缺模型时使用远端措辞并保留本机配置动作", (workspaceIdentity) => {
     projectionState.current = {
       status: "live",
       snapshot: makeSnapshot(),
@@ -299,7 +299,6 @@ describe("SessionPane error banner wiring", () => {
 
     renderPane(workspaceIdentity);
 
-    expect(typeof captured.onOpenModelUpgrade).toBe("function");
     expect(captured.modelConfigTarget).toBe("remote");
   });
 
@@ -315,7 +314,6 @@ describe("SessionPane error banner wiring", () => {
 
     renderPane();
 
-    expect(typeof captured.onOpenModelUpgrade).toBe("function");
     expect(captured.modelConfigTarget).toBe("local");
   });
 });

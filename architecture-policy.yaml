@@ -751,6 +751,10 @@ exceptions:
     rule: unmanaged-new-file
     paths: [packages/shared/src/shortcutCommands.ts]
     reason: 已准入的快捷键命令表只追加一条 toggleSidePaneFullView 命令（Side Pane 完整视图，docs/ui/side-pane-full-view.md）；命令表仍是唯一数据源，签名与模块边界不变，接管整个 shared 包不在本次范围内。
+  - id: mod-devendor-sidebar-bottom-activity
+    rule: unmanaged-new-file
+    paths: [packages/ui/src/sidebar-activity/SidebarBottomActivity.tsx]
+    reason: 改装版移除了左下角共享槽位的营销 banner，只保留 GlobalNoticeSurface；该路径被上游计入新引入文件，按规则需登记例外。槽位语义再变更时须重新核对。
   - id: opensource-cua-test-project-config
     rule: unmanaged-new-file
     paths: [packages/zcode-cua/vitest.config.ts]

@@ -9,7 +9,9 @@ import {
 } from "./e2e/helpers/coding-plan-upgrade-mock-server.js";
 
 describe("Coding Plan upgrade E2E mock server", () => {
-  let server: CodingPlanUpgradeMockServer | null = null;  afterEach(async () => {
+  let server: CodingPlanUpgradeMockServer | null = null;
+
+  afterEach(async () => {
     await server?.stop();
     server = null;
   });
@@ -51,6 +53,19 @@ describe("Coding Plan upgrade E2E mock server", () => {
       const customer = await fetchJson<{ data: { organizations: unknown[] } }>(
         `${server.baseUrl}/api/biz/customer/getCustomerInfo`,
       );
+      expect(customer.data.organizations).toEqual([
+        { organizationId: "org-e2e", projects: [{ projectId: "proj-e2e", projectType: 0 }] },
+      ]);
+      expect(await fetchJson(`${server.baseUrl}/api/biz/subscription/list`)).toMatchObject({
+        data: [],
+      });
+      expect(await fetchJson(`${server.baseUrl}/api/monitor/usage/quota/limit`)).toMatchObject({
+        code: 404,
+        data: null,
+      });
+    },
+  );
+
   it("expires Start without revoking Coding Plan and resets the expiry between workers", async () => {
     server = await startCodingPlanUpgradeMockServer("manual-claim-experience");
     await fetch(`${server.baseUrl}/api/v1/zcode-plan/billing/claim`, { method: "POST" });

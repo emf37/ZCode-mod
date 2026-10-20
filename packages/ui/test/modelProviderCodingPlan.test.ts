@@ -6,10 +6,12 @@ import {
   BIGMODEL_PROVIDER_ID,
   BUILTIN_MODEL_PROVIDER_IDS,
   ZAI_PROVIDER_ID,
-  TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
-  TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON,
   type UsageEntitlementSnapshot,
 } from "@zcode/shared";
+import {
+  TID_MODEL_PROVIDER_ADD_MODEL_BUTTON,
+  TID_MODEL_PROVIDER_MODEL_DELETE_BUTTON,
+} from "@zcode/shared/test-ids";
 import {
   resolveCodingPlanProviderSyncAttemptKey,
   shouldRetryUnchangedCodingPlanProviderSync,

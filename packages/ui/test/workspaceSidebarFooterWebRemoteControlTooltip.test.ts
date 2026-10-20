@@ -22,6 +22,8 @@ const mockFooterSettings = vi.hoisted(() => ({
 vi.mock("@/ControlHintTooltip.js", () => ({
   ControlHintTooltip: ({ children, title }: { children: unknown; title: string }) =>
     createElement("span", { "data-tooltip-title": title }, children),
+  SidebarNativeTooltip: ({ children }: { children: unknown }) =>
+    createElement("span", null, children),
 }));
 
 vi.mock("@/WorkspaceWebRemoteControlTrigger.js", () => ({
