@@ -105,7 +105,10 @@ jobs:
 
   desktop-windows:
     name: Windows 桌面安装包
-    runs-on: windows-latest
+    # windows-latest 已切到 windows-2025-vs2026（只有 VS 18），而 3.18 的
+    # scripts/build-windows-runtime-host.mjs 硬编码 "Visual Studio 17 2022" 生成器，
+    # gyp 也不识别 VS 18；钉到仍然自带 VS 2022 的 windows-2022 镜像。
+    runs-on: windows-2022
     timeout-minutes: 90
     steps:
       - name: Checkout
