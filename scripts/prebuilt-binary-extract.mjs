@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -39,6 +40,19 @@ export function extractPrebuiltArchive({ archivePath, archiveExt, extractDir, cw
   mkdirSync(extractDir, { recursive: true });
   if (archiveExt === "zip") {
     if (process.platform === "win32") {
+      // Bugfix: 新版 runner 里 powershell.exe 会加载 PowerShell 7 的 Archive 模块，
+      // Expand-Archive 在 .NET 9 下报 "Cannot find an overload for ExtractToDirectory"。
+      // Windows 自带 bsdtar 能直接解 zip，优先用它；找不到时退回旧实现。
+      const bsdtar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+      if (existsSync(bsdtar)) {
+        const tarCwd = cwd ?? process.cwd();
+        runCommand(
+          bsdtar,
+          ["-xf", resolveTarArchiveArg(archivePath, tarCwd), "-C", toTarPosixPath(extractDir)],
+          { cwd: tarCwd },
+        );
+        return;
+      }
       runCommand("powershell.exe", [
         "-NoProfile",
         "-NonInteractive",
