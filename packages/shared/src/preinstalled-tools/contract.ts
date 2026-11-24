@@ -203,9 +203,9 @@ export type PreinstalledToolConfiguration = z.infer<typeof preinstalledToolConfi
 export type PreinstalledToolInstallation = z.infer<typeof preinstalledToolInstallationSchema>;
 export function resolvePreinstalledToolsRelease(input: {
   runtimeEnv: string;
-  productFlavor: "production" | "preview";
+  productFlavor: "production" | "preview" | "mod";
 }): PreinstalledToolsRelease {
-  return input.runtimeEnv === "development" ? "development" : input.productFlavor;
+  return input.runtimeEnv === "development" ? "development" : input.productFlavor === "mod" ? "production" : input.productFlavor;
 }
 export const preinstalledToolErrorSchema = z.enum([
   "network",
